@@ -1,0 +1,368 @@
+//nextrition api page
+
+<script>
+
+  let petFoodApiResp;
+  let Quiz_Result_Data;
+  let Quiz_Inputs;
+  async function getRecipes() {
+
+    const nameValue = document.getElementById("fname").value;
+    const emailValue = document.getElementById("email").value;
+    const birthValue = document.getElementsByClassName("select-selected")[0].innerHTML;    
+    const spayedValue = document.querySelector('input[name="spayed"]:checked').value == "true"
+      ? true
+      : false;
+    const weighValue = document.getElementById("weigh").value;
+    const breedValue = document.getElementById("searchFirstBreed").value
+    const breedValueTwo = document.getElementById("searchSecondBreed").value;
+    const activityValue = document.querySelector('input[name="dogActivity"]:checked').value;
+    const bodyValue = document.querySelector('input[name="dogBodyType"]:checked').value;
+    const customHealthIssue = document.getElementById('custom_heath_issue').value;
+    const customAllergyIssue = document.getElementById('custom_allergy_issue').value;
+
+    let allSelectedHealth = document.querySelectorAll('input[name="health_issues"]:checked');
+    let allSelectedHealthArr = []
+    allSelectedHealth.forEach(itm => {
+      allSelectedHealthArr.push(itm.value)
+    })
+    const healthIssuesValue = allSelectedHealthArr;
+
+    let allSelectedaller = document.querySelectorAll('input[name="allergies"]:checked');
+    let allSelectedallerArr = []
+    allSelectedaller.forEach(itm => {
+      if (String(itm.value).toLowerCase() == "othr") {
+        allSelectedallerArr.push("other")
+      } else {
+        allSelectedallerArr.push(itm.value)
+      }
+    })
+    const allergiesValue = allSelectedallerArr; // document.querySelector('input[name="allergies"]:checked').value;
+
+    Quiz_Inputs = {
+      gender:"male",
+      name: nameValue,
+      email: emailValue,
+      dob: birthValue,
+      spayed: spayedValue,
+      weight: weighValue,
+      breed: breedValue,
+      breedTwo: breedValueTwo,
+      activity: activityValue,
+      bodytype: bodyValue,
+      healthIssues: healthIssuesValue,
+      allergies: allergiesValue,
+      customHealthIssue,
+      customAllergyIssue
+    }
+
+    window
+      .dataLayer
+      .push({
+        event: "Quiz Submission",
+        ...Quiz_Inputs
+      })
+
+
+      document
+      .getElementById("spinner")
+      .style
+      .visibility = "visible";
+    
+    try {
+      let foodInfo = await fetch(`${ BASE_URL }/pet/food`, {
+        method: 'POST', // or 'PUT'
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(Quiz_Inputs)
+      })
+
+      if(foodInfo.status != 200){
+        const error = await foodInfo.json()
+        console.log("error : ", error)
+        $("#quiz_error").text(error.error)
+        throw new Error(error.error)        
+      }
+
+      petFoodApiResp = await foodInfo
+        .json()
+
+        // allMongoIds
+        // .push(petFoodApiResp.data.petSavedId)
+
+        document
+        .getElementById("spinner")
+        .style
+        .visibility = "hidden";
+
+      //hide allergy page
+      document.getElementById("page10").style.display = "none";
+      // hide progressBar on result pages
+      document.getElementById("prog-bar-display-none").style.display = "none";
+      
+      if (petFoodApiResp.data.FinalRecommendedRecipe == "none") {
+        //show oops page
+        const other_idx = allSelectedallerArr.findIndex(item => item == "othr")
+        if (other_idx >= 0) {
+          allSelectedallerArr.splice(other_idx, 1)
+        }
+        document.getElementById("allergiesOnSnapPage").innerHTML = allSelectedallerArr.join(", ").replace(/_/g, " ");
+        document.getElementById("page11").style.display = "block";
+        $(".nameOnNull").text(Quiz_Inputs.name || "");
+        return
+      }
+
+      // SENDING DATA TO THE RESULT ACCORDION
+      $(".petsName").text(nameValue);
+      document.getElementById("petsDOB").innerHTML = birthValue;
+      document.getElementById("petsSpayed").innerHTML = spayedValue == true
+        ? "yes"
+        : "no";
+      document.getElementById("petsWeight").innerHTML = weighValue;
+      document.getElementById("petsBreed").innerHTML = breedValue;
+      document.getElementById("petsBreedTwo").innerHTML = breedValueTwo == ""
+        ? ""
+        : ", " + breedValueTwo;
+
+      document.getElementById("petsActivity").innerHTML = activityValue;
+      document.getElementById("petsBodyType").innerHTML = bodyValue.replace(/_/g, " ");
+      document.getElementById("petsHealthIssues").innerHTML = allSelectedHealthArr.join(", ").replace(/_/g, " ");
+      document.getElementById("petsAllergies").innerHTML = allSelectedallerArr.map(x => {
+        return x.replace(/othr/g, "Other")
+      }).join(", ").replace(/_/g, " ");
+
+      //showing sections of the result page
+      document.getElementById("page12").style.display = "block";
+      document.getElementById("page12one").style.display = "block";
+      document.getElementById("page12two").style.display = "block";
+
+
+      const recommeneded_product =  shopifyProducts.find((({node}) => node.title.toLowerCase().includes(petFoodApiResp.data.FinalRecommendedRecipe)))
+
+      //setting email in the field that usesr entered in the quiz
+      $(".email-input").val(emailValue)
+      $(".quiz_cal_per_day").text(petFoodApiResp.data.calPerDay)
+      $(".quiz_time_span_45_pound_bag").text(petFoodApiResp.data?.timeSpanForDifferentVariants?.variant45 || "")
+      $(".quiz_time_span_9_pound_bag").text(petFoodApiResp.data?.timeSpanForDifferentVariants?.variant9 || "")
+      $(".quiz_time_span_135_pound_bag").text(petFoodApiResp.data?.timeSpanForDifferentVariants?.variant135 || "")
+      $(".quiz_pet_name").text(nameValue)
+
+
+      const cupsInFraction = convertDecimalToFraction(petFoodApiResp.data.cupsPerDayNearest8thCup)
+    
+      if(String(cupsInFraction).includes("/")){
+        //check if it has a whole number also
+        if(String(cupsInFraction).includes(" ")){
+          $(".cup_per_day_8th").text(cupsInFraction + " cup(s)")
+        }else{
+          $(".cup_per_day_8th").text(cupsInFraction + " of a cup")               
+        }
+      }else{
+        if(cupsInFraction == 1){
+          $(".cup_per_day_8th").text(cupsInFraction + " cup")       
+        }else{
+          $(".cup_per_day_8th").text(cupsInFraction + " cups")
+        }
+      }
+
+      //setting things for recommended product starts
+      $(".quiz_recommended_title").text(recommeneded_product.node.title)
+      $(".quiz_recommended_reason").text(petFoodApiResp.data.recommendedRecipeReason)
+      $(".quiz_recommended_recipe_img").attr("src", {
+        "lamb": "https://cdn.shopify.com/s/files/1/0618/4222/7422/files/lamb_a0ca8238-97d4-4ea7-bdc4-afa1e1cc2d26.png?v=1701869903",
+        "chicken": "https://cdn.shopify.com/s/files/1/0618/4222/7422/files/chicken_e955f369-9c92-4d39-8b7c-ddb5deab770a.png?v=1701869903",
+        "salmon": "https://cdn.shopify.com/s/files/1/0618/4222/7422/files/salmon_328980f8-0dfc-405f-979f-50b38820c550.png?v=1701869903"
+      }[petFoodApiResp.data.FinalRecommendedRecipe])
+      
+      $(".quiz_recommended_dog_img").attr("src", 
+      {
+        "lamb": "https://cdn.shopify.com/s/files/1/0784/4495/3921/files/lamb_dog.png",
+        "chicken": "https://cdn.shopify.com/s/files/1/0784/4495/3921/files/chicken_dog.png",
+        "salmon": "https://cdn.shopify.com/s/files/1/0784/4495/3921/files/salmon_dog.png"
+      }[petFoodApiResp.data.FinalRecommendedRecipe])
+      $(".quiz_recommended_border").addClass( 
+      {
+        "lamb": "cus-rec-prod-border-colr-lamb",
+        "chicken": "cus-rec-prod-border-colr-chicken",
+        "salmon": "cus-rec-prod-border-colr-salmon"
+      }[petFoodApiResp.data.FinalRecommendedRecipe])
+      //setting things for recommended product ends
+      
+      
+      const allrecipes = ["chicken", "lamb", "salmon"]
+      if(!petFoodApiResp.data.notRecomendedFood.length){
+        //this if condition is for the case when there is no "not recommended food"
+
+        const normalRecipes =  allrecipes.filter(item => item != petFoodApiResp.data.FinalRecommendedRecipe)
+        const arrForLoop = ["one", "two"]
+        arrForLoop.forEach((item, index) =>{
+          const products_info =  shopifyProducts.find((({node}) => node.title.toLowerCase().includes(normalRecipes[index])))
+
+          $(`.quiz_not_recommended_badge_${item}`).css("display","none")
+          $(`.quiz_not_recommended_title_${item}`).text(products_info.node.title)
+          $(`.quiz_not_recommended_reason_${item}`).text("")
+          $(`.quiz_not_recommended_recipe_img_${item}`).attr("src", {
+            "lamb": "https://cdn.shopify.com/s/files/1/0618/4222/7422/files/lamb_a0ca8238-97d4-4ea7-bdc4-afa1e1cc2d26.png?v=1701869903",
+            "chicken": "https://cdn.shopify.com/s/files/1/0618/4222/7422/files/chicken_e955f369-9c92-4d39-8b7c-ddb5deab770a.png?v=1701869903",
+            "salmon": "https://cdn.shopify.com/s/files/1/0618/4222/7422/files/salmon_328980f8-0dfc-405f-979f-50b38820c550.png?v=1701869903"
+          }[normalRecipes[index]])
+
+          $(`.quiz_not_recommended_dog_img_${item}`).attr("src","")
+          $(`.quiz_not_recommended_dog_img_${item}`).css("display","none")
+          $(`.quiz_not_recommended_border_${item}`).addClass( 
+          {
+            "lamb": "cus-rec-prod-border-colr-lamb",
+            "chicken": "cus-rec-prod-border-colr-chicken",
+            "salmon": "cus-rec-prod-border-colr-salmon"
+          }[normalRecipes[index]])
+        })         
+      }else{
+        if(petFoodApiResp.data.notRecomendedFood.length == 1){    
+          // this if condition is for the case when there is only one "not recommended food"  
+          
+          const normalRecipes =  allrecipes.filter(item => item != String(petFoodApiResp.data.FinalRecommendedRecipe).toLowerCase())
+          const notRecRecipName = allrecipes.find(item => item == petFoodApiResp.data.notRecomendedFood[0].food)
+          const notRecommendedReason = petFoodApiResp.data.notRecomendedFood[0].reason
+          
+          //loop will work for UI from bottom to top, because not recommended food is at the bottom and the normal product is in middle
+          const arrForLoop = ["two", "one"]
+
+          arrForLoop.forEach((item, index) =>{
+
+            let recipeName;
+
+            if(index == 0){
+              recipeName = notRecRecipName
+            }else{
+              recipeName = normalRecipes.find(item => item != notRecRecipName)
+            }
+
+            const products_info =  shopifyProducts.find((({node}) => node.title.toLowerCase().includes(recipeName)))
+
+            $(`.quiz_not_recommended_badge_${item}`).css("display", index == 0 ? "flex" : "none")
+            $(`.quiz_not_recommended_title_${item}`).text(products_info.node.title)
+            $(`.quiz_not_recommended_reason_${item}`).text(index == 0 ? notRecommendedReason : "")
+            $(`.quiz_not_recommended_recipe_img_${item}`).attr("src", {
+              "lamb": "https://cdn.shopify.com/s/files/1/0618/4222/7422/files/lamb_a0ca8238-97d4-4ea7-bdc4-afa1e1cc2d26.png?v=1701869903",
+              "chicken": "https://cdn.shopify.com/s/files/1/0618/4222/7422/files/chicken_e955f369-9c92-4d39-8b7c-ddb5deab770a.png?v=1701869903",
+              "salmon": "https://cdn.shopify.com/s/files/1/0618/4222/7422/files/salmon_328980f8-0dfc-405f-979f-50b38820c550.png?v=1701869903"
+            }[recipeName])
+
+            $(`.quiz_not_recommended_dog_img_${item}`).attr("src","")
+            $(`.quiz_not_recommended_dog_img_${item}`).css("display","none")
+            $(`.quiz_not_recommended_border_${item}`).addClass( 
+            {
+              "lamb": "cus-rec-prod-border-colr-lamb",
+              "chicken": "cus-rec-prod-border-colr-chicken",
+              "salmon": "cus-rec-prod-border-colr-salmon"
+            }[recipeName])
+          })
+        }else{
+          const arrForLoop = ["one", "two"]
+          arrForLoop.forEach((item, index) =>{
+            const products_info =  shopifyProducts.find((({node}) => node.title.toLowerCase().includes(petFoodApiResp.data.notRecomendedFood[index].food)))
+
+            $(`.quiz_not_recommended_badge_${item}`).css("display","flex")
+            $(`.quiz_not_recommended_title_${item}`).text(products_info.node.title)
+            $(`.quiz_not_recommended_reason_${item}`).text(petFoodApiResp.data.notRecomendedFood[index].reason)
+            $(`.quiz_not_recommended_recipe_img_${item}`).attr("src", {
+              "lamb": "https://cdn.shopify.com/s/files/1/0618/4222/7422/files/lamb_a0ca8238-97d4-4ea7-bdc4-afa1e1cc2d26.png?v=1701869903",
+              "chicken": "https://cdn.shopify.com/s/files/1/0618/4222/7422/files/chicken_e955f369-9c92-4d39-8b7c-ddb5deab770a.png?v=1701869903",
+              "salmon": "https://cdn.shopify.com/s/files/1/0618/4222/7422/files/salmon_328980f8-0dfc-405f-979f-50b38820c550.png?v=1701869903"
+            }[petFoodApiResp.data.notRecomendedFood[index].food])
+
+            $(`.quiz_not_recommended_dog_img_${item}`).attr("src","")
+            $(`.quiz_not_recommended_dog_img_${item}`).css("display","none")
+            $(`.quiz_not_recommended_border_${item}`).addClass( 
+            {
+              "lamb": "cus-rec-prod-border-colr-lamb",
+              "chicken": "cus-rec-prod-border-colr-chicken",
+              "salmon": "cus-rec-prod-border-colr-salmon"
+            }[petFoodApiResp.data.notRecomendedFood[index].food])
+          })  
+        }
+
+        //store results in ls start
+        const stringify_quiz_result = localStorage.getItem("quiz_results")
+        const quiz_results = JSON.parse(stringify_quiz_result)
+
+        if(quiz_results){          
+          const pet_already_exists_at = quiz_results.findIndex(item => {
+            return item.pet_name == petFoodApiResp.data.pet_name && item.pet_email == petFoodApiResp.data.pet_email
+          })
+
+          if(pet_already_exists_at >= 0){            
+            quiz_results[pet_already_exists_at] = petFoodApiResp.data
+
+            localStorage.setItem("quiz_results", JSON.stringify(quiz_results))
+          }else{            
+            quiz_results.push( petFoodApiResp.data )
+            localStorage.setItem("quiz_results", JSON.stringify(quiz_results))
+          }
+        }else{          
+          localStorage.setItem("quiz_results", JSON.stringify([ petFoodApiResp.data ]))
+        }
+        //store results in ls end
+      }
+
+      //show price per day of cheapest variant from the products
+      const allVariants = shopifyProducts.map(({node}) => node.variants.edges)
+      const allVariantsFlatten = allVariants.flat()      
+      const allVariantsFlattenSorted = allVariantsFlatten.sort((a, b) => a.node.priceV2.amount - b.node.priceV2.amount)      
+      const cheapestVariant = allVariantsFlattenSorted[0].node.priceV2.amount      
+      const cheapestVariantPerDay = (cheapestVariant / petFoodApiResp.data?.timeSpanForDifferentVariants?.variant45 || 0).toFixed(2)       
+      let cheapestVariantPerDayDiscounted = (cheapestVariantPerDay * (SHOPIFY_DISCOUNT_CODE/100)).toFixed(2)      
+      cheapestVariantPerDayDiscounted = (cheapestVariantPerDay - cheapestVariantPerDayDiscounted).toFixed(2)      
+      
+      $(".quiz_price_per_day").text(cheapestVariantPerDayDiscounted)
+      $(".subscription_shopify_discount").text(SHOPIFY_DISCOUNT_CODE)
+
+
+      Quiz_Result_Data = petFoodApiResp.data
+      Quiz_Result_Data["amount_per_day"] = cheapestVariantPerDayDiscounted
+      Quiz_Result_Data["cupsInFraction"] = cupsInFraction
+      return
+      
+    } catch (e) {
+      document.getElementById("spinner").style.visibility = "hidden";
+      console.error("=> error : ", e.message, e.stack, e.name)        
+    }
+
+  }
+
+  function convertDecimalToFraction(valu){
+    const decimal = valu - Math.floor(valu)
+    const whole = Math.floor(valu)
+    const numerator = decimal * 8
+    const denominator = 8
+
+    if(numerator == 0){
+      return whole
+    }else{
+      //check if fraction can be reduced
+
+      const gcd = (a, b) => {
+        if (b < 0.0000001) 
+          return a;
+        return gcd(b, Math.floor(a % b));
+      };
+
+      const divisor = gcd(numerator, denominator);
+
+      const num = numerator / divisor;
+      const den = denominator / divisor;
+
+      if(den == 1){
+        return `${whole + num}`
+      }
+
+      if(whole == 0){
+        return `${num}/${den}`
+      }
+
+      return `${whole} ${num}/${den}`
+      
+    }
+  }
+</script>
