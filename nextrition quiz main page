@@ -1,0 +1,1175 @@
+// nextrition quiz main page
+
+{% render 'nextrition_quiz_api' %}
+{% section 'quiz-entry' %}
+
+<div id="prog-bar-display-none" style="width: 100%;">
+  {% render 'quiz_progress_bar' %}
+</div>
+{% section 'quiz-email' %}
+{% section 'quiz-dob' %}
+{% section 'quiz-spayed' %}
+{% section 'quiz-weigh' %}
+{% section 'quiz-breed' %}
+{% section 'quiz-Activity' %}
+{% section 'quiz-body' %}
+{% section 'quiz-health' %}
+{% section 'quiz-allergies-and-sensitivities' %}
+<!-- FOR NULL RESULTS -->
+{% section 'quiz-result-null' %}
+<!-- FOR RESULTS -->
+{% section 'quiz-results' %}
+{% section 'quiz-testimonial' %}
+{% section 'quiz-faqs' %}
+
+<script>
+  clearAllSelectionAndField();
+  var pageNumber = 1;
+
+  var petInfo = {
+    weight: '',
+    bodytype: '',
+    spayed: false,
+    healthIssues: '',
+    allergies: '',
+    name: '',
+    email: '',
+    dob: '',
+    gender: '',
+    breed: '',
+    activity: '',
+  };
+
+  let prodArr = [];
+
+  showPage(pageNumber);
+  async function showPage(page) {
+    hideAllScreens();
+    document.getElementById('spinnerCheckOut').style.visibility = 'hidden';
+
+    if (page == 1) {
+      // NAME
+
+      let params = window.location.search;
+      window.history.pushState('object', '', 'quiz');
+      if (params != '') {
+        try {
+          params = params.replace('?', '');
+
+          const normalLink = atob(params);
+          console.log('==>>>>', normalLink);
+          const incoming_mongo_id = normalLink.split('plan=')[1].split('&')[0];
+          const incoming_email = normalLink.split('email=')[1].split('&')[0];
+
+          console.log('================= GOING TO CALL =================');
+          await getIncommingQuizData({
+            email: incoming_email,
+            plan_id: incoming_mongo_id,
+          });
+          console.log('================= BACK FROM CALL =================');
+        } catch (e) {
+          console.log('error', e.message);
+        }
+      }
+
+      const name = localStorage.getItem('next_quiz_fname') || '';
+      document.getElementById('fname').value = name;
+      document.getElementById('page1').style.display = 'block';
+
+      saveEmailInLS();
+
+      // PROGRESS BAR
+      document.getElementById('prog-bar-display-none').style.display = 'none';
+
+      enableBtn('fname', 'nameBtnDiv');
+    } else if (page == 2) {
+      // EMAIL
+
+      // push wemail in datalayer
+      window.dataLayer.push({ event: 'Quiz Page 1', email: document.getElementById('email').value });
+
+      const email = localStorage.getItem('next_quiz_email') || '';
+      document.getElementById('email').value = email;
+      saveNameInLS();
+      document.getElementById('page2').style.display = 'block';
+
+      // PROGRESS BAR
+      document.getElementById('prog-bar-display-none').style.display = 'block';
+
+      storeDOBInLS();
+
+      enableBtn('email', 'emailBtnDiv');
+    } else if (page == 3) {
+      // DOB
+
+      // push wemail in datalayer
+      window.dataLayer.push({ event: 'Quiz Page 2', email: document.getElementById('email').value });
+
+      const dateofbirth = localStorage.getItem('next_quiz_dateofbirth') || 'Select age';
+      document.getElementsByClassName('select-selected')[0].innerHTML = dateofbirth;
+      saveEmailInLS();
+      document.getElementById('page3').style.display = 'block';
+      const Name = document.getElementById('fname').value;
+      document.getElementById('nameOnDOB').innerHTML = Name;
+
+      saveSpayedInLS();
+
+      enableBtnForCustomSelect(0, 'dobBtnDiv');
+    } else if (page == 4) {
+      // SPAYED
+
+      // push wemail in datalayer
+      window.dataLayer.push({ event: 'Quiz Page 4', email: document.getElementById('email').value });
+
+      const spayed = localStorage.getItem('next_quiz_spayed') || '';
+      if (spayed && spayed != 'undefined') {
+        const selector = 'input[value="' + spayed + '"]';
+        document.querySelector(selector).checked = true;
+        document
+          .querySelector(`input[name="spayed"]:checked`)
+          .parentElement.parentElement.classList.add('activeRadioBtn');
+      }
+
+      storeDOBInLS();
+
+      document.getElementById('page4').style.display = 'block';
+      const Name = document.getElementById('fname').value;
+      document.getElementById('nameOnSpayed').innerHTML = Name;
+
+      saveWeightInLS();
+
+      enableBtnForNontextType('spayed', 'spayedBtnDiv');
+    } else if (page == 5) {
+      // WEIGHT
+
+      // push wemail in datalayer
+      window.dataLayer.push({ event: 'Quiz Page 5', email: document.getElementById('email').value });
+
+      const weigh = localStorage.getItem('next_quiz_weigh') || '';
+      document.getElementById('weigh').value = weigh;
+
+      saveSpayedInLS();
+
+      document.getElementById('page5').style.display = 'block';
+      const Name = document.getElementById('fname').value;
+      document.getElementById('nameOnWeight').innerHTML = Name;
+
+      // TODO: save breed in ls
+
+      enableBtn('weigh', 'weighBtnDiv');
+    } else if (page == 6) {
+      // BREED
+
+      // push wemail in datalayer
+      window.dataLayer.push({ event: 'Quiz Page 6', email: document.getElementById('email').value });
+
+      const breedOne = localStorage.getItem('next_quiz_breed_one') || '';
+
+      if (breedOne) {
+        const selector = `p.quizBreedOpt[value="${breedOne}"]`;
+        document.getElementById('searchFirstBreed').value = document.querySelector(selector).innerHTML;
+      } else {
+        document.getElementById('searchFirstBreed').value = '';
+      }
+
+      const breedSecond = localStorage.getItem('next_quiz_breed_two') || '';
+
+      if (breedSecond) {
+        const selectorSecond = `p.quizBreedOpt1[value="${breedSecond}"]`;
+        document.getElementById('searchSecondBreed').value = document.querySelector(selectorSecond).innerHTML;
+        addAnotherBreed();
+      } else {
+        removeAnotherBreed();
+      }
+      saveWeightInLS();
+
+      document.getElementById('page6').style.display = 'block';
+      const Name = document.getElementById('fname').value;
+      document.getElementById('nameOnBreed').innerHTML = Name;
+
+      saveActivityInLS();
+      enableBtnForBreed();
+    } else if (page == 7) {
+      // ACTIVITY
+
+      // push wemail in datalayer
+      window.dataLayer.push({ event: 'Quiz Page 7', email: document.getElementById('email').value });
+
+      const dogActivity = localStorage.getItem('next_quiz_dogActivity') || '';
+      if (dogActivity && dogActivity != 'undefined') {
+        const selector = 'input[value="' + dogActivity + '"]';
+        document.querySelector(selector).checked = true;
+        document.querySelector(selector).parentElement.classList.add('imActive');
+      }
+
+      // TODO: save breed in ls
+
+      document.getElementById('page7').style.display = 'block';
+      const Name = document.getElementById('fname').value;
+      document.getElementById('nameOnActivity').innerHTML = Name;
+
+      saveBodyTypeInLS();
+
+      enableBtnForNontextType('dogActivity', 'dogActivityBtnDiv');
+    } else if (page == 8) {
+      // BODY TYPE
+
+      // push wemail in datalayer
+      window.dataLayer.push({ event: 'Quiz Page 8', email: document.getElementById('email').value });
+
+      const dogBodyType = localStorage.getItem('next_quiz_bodyType') || '';
+      if (dogBodyType && dogBodyType != 'undefined') {
+        const selector = 'input[value="' + dogBodyType + '"]';
+        document.querySelector(selector).checked = true;
+        document.querySelector(selector).parentElement.classList.add('activeBody');
+      }
+
+      saveActivityInLS();
+
+      document.getElementById('page8').style.display = 'block';
+      const Name = document.getElementById('fname').value;
+      document.getElementById('nameOnBody').innerHTML = Name;
+      document.getElementById('nameOnBody1').innerHTML = Name;
+
+      saveHealthIssueInLS();
+
+      enableBtnForNontextType('dogBodyType', 'dogBodyTypeBtnDiv');
+
+      // createResultPageProduct();
+      getShopifyProd();
+    } else if (page == 9) {
+      // HEALTH ISSUE
+
+      // push wemail in datalayer
+      window.dataLayer.push({ event: 'Quiz Page 9', email: document.getElementById('email').value });
+
+      const health_issues = localStorage.getItem('next_quiz_healthIssue')?.split(',') || '';
+      if (health_issues && health_issues != 'undefined') {
+        health_issues.forEach((ckBx) => {
+          const selector = 'input[value="' + ckBx + '"]';
+          document.querySelector(selector).checked = true;
+          document.querySelector(selector).parentElement.parentElement.classList.add('activeRadioBtn');
+
+          if (ckBx == 'other') {
+            other_health_issue_clicked(false);
+          }
+        });
+
+        // const selector = 'input[value="' + health_issues + '"]'
+        // document.querySelector(selector).checked = true
+        // document.querySelector(`input[name="health_issues"]:checked`).parentElement.parentElement.classList.add("activeRadioBtn")
+      }
+      saveBodyTypeInLS();
+
+      document.getElementById('page9').style.display = 'block';
+      const Name = document.getElementById('fname').value;
+      document.getElementById('nameOnHealth').innerHTML = Name;
+      document.getElementById('nameOnHealth1').innerHTML = Name;
+      document.getElementById('nameOnHealth2').innerHTML = Name;
+
+      enableBtnForNontextType('health_issues', 'health_issuesBtnDiv');
+    } else if (page == 10) {
+      // ALLERGIES
+
+      // push wemail in datalayer
+      window.dataLayer.push({ event: 'Quiz Page 10', email: document.getElementById('email').value });
+
+      saveHealthIssueInLS();
+
+      document.getElementById('page10').style.display = 'block';
+      const Name = document.getElementById('fname').value;
+      document.getElementById('nameOnAllergies').innerHTML = Name;
+
+      const allergies = localStorage.getItem('next_quiz_allergies')?.split(',') || '';
+      if (allergies && allergies != 'undefined') {
+        allergies.forEach((ckBx) => {
+          const selector = 'input[value="' + ckBx + '"]';
+
+          if (ckBx == 'None') {
+            document.querySelector(`${selector}[name="allergies"]`).checked = true;
+            document
+              .querySelector(`${selector}[name="allergies"]`)
+              .parentElement.parentElement.classList.add('activeRadioBtn');
+          } else {
+            document.querySelector(selector).checked = true;
+            document.querySelector(selector).parentElement.parentElement.classList.add('activeRadioBtn');
+          }
+
+          if (ckBx == 'othr') {
+            other_allergy_clicked(false);
+          }
+        });
+      }
+
+      enableBtnForNontextType('allergies', 'allergiesBtnDiv');
+    }
+
+    // this is to push to page to top on refres or add new pet
+    window.scrollTo(0, 0);
+  }
+
+  //when customer will come from portal with a plan to edit first get info regarding that plan and update values in in localStorage
+  async function getIncommingQuizData({ email, plan_id }) {
+    console.log('=>>>>>>>>>>> getIncommingQuizData: ', email, plan_id);
+    const raw = JSON.stringify({ email, plan_id });
+
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: raw,
+    };
+    try {
+      const response = await fetch(`${BASE_URL}/pet/planinfo`, requestOptions);
+      const { pet } = await response.json();
+
+      console.log('=>>>> pet :', pet);
+
+      let localAge = '';
+      if (pet.age.includes('-')) {
+        localAge = `${pet.age} Months Old`;
+      } else if (pet.age == '1') {
+        localAge = `${pet.age} year Old`;
+      } else {
+        localAge = `${pet.age} Years Old`;
+      }
+
+      let incomingBreedOne = '';
+      let incomingBreedTwo = '';
+
+      if (pet?.breed != '') {
+        incomingBreedOne = pet?.breed.split(' ');
+        incomingBreedOne = incomingBreedOne.map((o) => o.charAt(0).toUpperCase() + o.slice(1)).join('');
+      }
+
+      if (pet?.breedTwo != '') {
+        incomingBreedTwo = pet?.breedTwo.split(' ');
+        incomingBreedTwo = incomingBreedTwo.map((o) => o.charAt(0).toUpperCase() + o.slice(1)).join('');
+      }
+
+      let incomingActivity = '';
+      if (pet?.activity != '') {
+        const referenceObj = {
+          low: 'Low',
+          moderate: 'Moderate',
+          high: 'High',
+        };
+        incomingActivity = referenceObj[pet.activity];
+      }
+
+      let incomingBodytype = '';
+      if (pet?.bodytype != '') {
+        const referenceObj = {
+          'under weight': 'Under_weight',
+          ideal: 'Ideal',
+          'over weight': 'Over_weight',
+        };
+        incomingBodytype = referenceObj[pet.bodytype];
+      }
+
+      let incomingHealthIssues = '';
+      if (pet?.healthIssues?.length > 0) {
+        const referenceObj = {
+          'bad breath': 'Bad_breath',
+          constipation: 'Constipation',
+          diarrhea: 'Diarrhea',
+          'hip&joints': 'Hip_&_joints',
+          gas: 'gas',
+          'dry skin & dull coat': 'Dry_Skin_&_Dull_Coat',
+          vomiting: 'Vomiting',
+          none: 'None',
+          other: 'other',
+        };
+        incomingHealthIssues = pet?.healthIssues.map((item) => referenceObj[item]).join(',');
+      }
+
+      let incomingAllergies = '';
+      if (pet?.allergies?.length > 0) {
+        const refObj = {
+          apple: 'Apple',
+          banana: 'Banana',
+          blueberry: 'Blueberry',
+          'brown rice': 'Brown_rice',
+          carrot: 'Carrot',
+          barley: 'Barley',
+          sorghum: 'Sorghum',
+          cranberry: 'Cranberry',
+          egg: 'Egg',
+          oatmeal: 'Oatmeal',
+          pumpkin: 'Pumpkin',
+          spinach: 'Spinach',
+          'sweet potato': 'Sweet_potato',
+          other: 'othr',
+          none: 'None',
+        };
+        incomingAllergies = pet?.allergies.map((item) => refObj[item]).join(',');
+      }
+
+      localStorage.setItem('next_quiz_fname', pet?.name);
+      localStorage.setItem('next_quiz_email', email);
+      localStorage.setItem('next_quiz_dateofbirth', localAge);
+      localStorage.setItem('next_quiz_breed_one', incomingBreedOne);
+      localStorage.setItem('next_quiz_breed_two', incomingBreedTwo);
+      localStorage.setItem('next_quiz_spayed', pet?.spayed);
+      localStorage.setItem('next_quiz_weigh', pet?.weight);
+      localStorage.setItem('next_quiz_dogActivity', incomingActivity);
+      localStorage.setItem('next_quiz_bodyType', incomingBodytype);
+      localStorage.setItem('next_quiz_healthIssue', incomingHealthIssues);
+      localStorage.setItem('custom_heath_issue', pet?.other_healthIssues ?? '');
+      localStorage.setItem('next_quiz_allergies', incomingAllergies);
+      localStorage.setItem('custom_allergy_issue', pet?.other_allergies ?? '');
+    } catch (err) {
+      console.log('===>> ERROR , getIncommingQuizData: ', err.message);
+    }
+  }
+
+  function saveNameInLS() {
+    const value = localStorage.getItem('next_quiz_fname');
+    if (value && value == document.getElementById('fname')?.value) {
+      localStorage.setItem('next_quiz_fname', value);
+    } else {
+      localStorage.setItem('next_quiz_fname', document.getElementById('fname')?.value);
+    }
+  }
+
+  function saveEmailInLS() {
+    const value = localStorage.getItem('next_quiz_email');
+    if (value && value == document.getElementById('email')?.value) {
+      localStorage.setItem('next_quiz_email', value);
+    } else {
+      if (document.getElementById('email')?.value) {
+        localStorage.setItem('next_quiz_email', document.getElementById('email')?.value);
+      } else {
+        localStorage.setItem('next_quiz_email', value || '');
+      }
+    }
+  }
+
+  function saveDOBInLS() {
+    const value = localStorage.getItem('next_quiz_dateofbirth');
+    if (value && value == document.getElementById('dateofbirth')?.value) {
+      localStorage.setItem('next_quiz_dateofbirth', value);
+    } else {
+      if (document.getElementById('dateofbirth')?.value) {
+        localStorage.setItem('next_quiz_dateofbirth', document.getElementById('dateofbirth')?.value);
+      } else {
+        localStorage.setItem('next_quiz_dateofbirth', value || '');
+      }
+    }
+  }
+
+  function saveGenderInLS() {
+    const value = localStorage.getItem('next_quiz_gender');
+    if (value && value == document.querySelector('input[name="gender"]:checked')?.value) {
+      localStorage.setItem('next_quiz_gender', value);
+    } else {
+      if (document.querySelector('input[name="gender"]:checked')?.value) {
+        localStorage.setItem('next_quiz_gender', document.querySelector('input[name="gender"]:checked')?.value);
+      } else {
+        localStorage.setItem('next_quiz_gender', value || '');
+      }
+    }
+  }
+
+  function saveSpayedInLS() {
+    const value = localStorage.getItem('next_quiz_spayed');
+    if (value && (value == document.querySelector('input[name="spayed"]:checked')?.value) == 'true' ? true : false) {
+      localStorage.setItem('next_quiz_spayed', value);
+    } else {
+      if (document.querySelector('input[name="spayed"]:checked')) {
+        if (document.querySelector('input[name="spayed"]:checked')?.value) {
+          localStorage.setItem(
+            'next_quiz_spayed',
+            document.querySelector('input[name="spayed"]:checked')?.value == 'true' ? true : false
+          );
+        } else {
+          localStorage.setItem('next_quiz_spayed', value);
+        }
+      }
+    }
+  }
+
+  function saveWeightInLS() {
+    const value = localStorage.getItem('next_quiz_weigh');
+    if (value && value == document.getElementById('weigh')?.value) {
+      localStorage.setItem('next_quiz_weigh', value);
+    } else {
+      if (document.getElementById('weigh')?.value) {
+        localStorage.setItem('next_quiz_weigh', document.getElementById('weigh')?.value);
+      } else {
+        localStorage.setItem('next_quiz_weigh', value || '');
+      }
+    }
+  }
+
+  function saveBreedInLS() {
+    const value = localStorage.getItem('next_quiz_breed_one');
+    if (value && value == document.getElementById('searchFirstBreed').value) {
+      localStorage.setItem('next_quiz_breed_one', value);
+    } else {
+      if (document.getElementById('searchFirstBreed').value) {
+        localStorage.setItem('next_quiz_breed_one', document.getElementById('searchFirstBreed').value);
+      } else {
+        localStorage.setItem('next_quiz_breed_one', value);
+      }
+    }
+  }
+
+  function saveActivityInLS() {
+    const value = localStorage.getItem('next_quiz_activity');
+    if (value && value == document.querySelector('input[name="dogActivity"]:checked')?.name) {
+      localStorage.setItem('next_quiz_activity', value);
+    } else {
+      if (document.querySelector('input[name="dogActivity"]:checked')) {
+        if (document.querySelector('input[name="dogActivity"]:checked')?.name) {
+          localStorage.setItem(
+            'next_quiz_dogActivity',
+            document.querySelector('input[name="dogActivity"]:checked')?.value
+          );
+        } else {
+          localStorage.setItem('next_quiz_dogActivity', value || 'undefined');
+        }
+      }
+    }
+  }
+
+  function saveBodyTypeInLS() {
+    const value = localStorage.getItem('next_quiz_bodyType');
+
+    if (value && value == document.querySelector('input[name="dogBodyType"]:checked')?.value) {
+      localStorage.setItem('next_quiz_bodyType', value);
+    } else {
+      if (document.querySelector('input[name="dogBodyType"]:checked')) {
+        if (document.querySelector('input[name="dogBodyType"]:checked')?.value) {
+          localStorage.setItem(
+            'next_quiz_bodyType',
+            document.querySelector('input[name="dogBodyType"]:checked')?.value
+          );
+        } else {
+          localStorage.setItem('next_quiz_bodyType', value || 'undefined');
+        }
+      }
+    }
+  }
+
+  function saveHealthIssueInLS() {
+    const value = localStorage.getItem('next_quiz_healthIssue');
+    const custom_HI = document.getElementById('custom_heath_issue').value;
+
+    let allSelected = document.querySelectorAll('input[name="health_issues"]:checked');
+    let allSelectedArr = [];
+    allSelected.forEach((itm) => {
+      allSelectedArr.push(itm.value);
+    });
+
+    if (!localStorage.getItem('custom_heath_issue')) {
+      localStorage.setItem('custom_heath_issue', custom_HI);
+    } else if (
+      localStorage.getItem('custom_heath_issue') &&
+      custom_HI != '' &&
+      localStorage.getItem('custom_heath_issue') != custom_HI
+    ) {
+      localStorage.setItem('custom_heath_issue', custom_HI);
+    } else {
+      localStorage.setItem('custom_heath_issue', localStorage.getItem('custom_heath_issue'));
+    }
+
+    if (value && value == document.querySelector('input[name="health_issues"]:checked')?.value) {
+      localStorage.setItem('next_quiz_healthIssue', allSelectedArr.join(',')); // value
+    } else {
+      if (document.querySelector('input[name="health_issues"]:checked')) {
+        if (document.querySelector('input[name="health_issues"]:checked')?.name) {
+          localStorage.setItem('next_quiz_healthIssue', allSelectedArr.join(',')); // document.querySelector('input[name="health_issues"]:checked')?.value
+        } else {
+          localStorage.setItem('next_quiz_healthIssue', allSelectedArr.join(',')); // value
+        }
+      }
+    }
+  }
+
+  function saveAllergiesInLS() {
+    console.log('saveAllergiesInLS');
+    const value = localStorage.getItem('next_quiz_allergies');
+    const custom_AI = document.getElementById('custom_allergy_issue').value;
+
+    let allSelected = document.querySelectorAll('input[name="allergies"]:checked');
+    let allSelectedArr = [];
+    allSelected.forEach((itm) => {
+      allSelectedArr.push(itm.value);
+    });
+
+    if (!localStorage.getItem('custom_allergy_issue')) {
+      localStorage.setItem('custom_allergy_issue', custom_AI);
+    } else if (
+      localStorage.getItem('custom_allergy_issue') &&
+      custom_AI != '' &&
+      localStorage.getItem('custom_allergy_issue') != custom_AI
+    ) {
+      localStorage.setItem('custom_allergy_issue', custom_AI);
+    } else {
+      localStorage.setItem('custom_allergy_issue', localStorage.getItem('custom_allergy_issue'));
+    }
+
+    if (value && value == document.querySelector('input[name="allergies"]:checked')?.value) {
+      localStorage.setItem('next_quiz_allergies', allSelectedArr.join(',')); // value
+    } else {
+      if (document.querySelector('input[name="allergies"]:checked')) {
+        if (document.querySelector('input[name="allergies"]:checked')?.name) {
+          localStorage.setItem('next_quiz_allergies', allSelectedArr.join(',')); // document.querySelector('input[name="health_issues"]:checked')?.value
+        } else {
+          localStorage.setItem('next_quiz_allergies', allSelectedArr.join(',')); // value
+        }
+      }
+    }
+  }
+
+  function enableBtnForBreed() {
+    const breedOneVal = document.getElementById('searchFirstBreed').value;
+
+    if (breedOneVal != '') {
+      const btnParentDiv = document.getElementById('breedBtnDiv');
+      const visdisplayPropValForSecondBreed =
+        document.getElementsByClassName('cus-display-none-breed')[0].style.display;
+
+      if (visdisplayPropValForSecondBreed == '' || visdisplayPropValForSecondBreed == 'none') {
+        btnParentDiv.getElementsByTagName('button')[0].removeAttribute('disabled');
+      } else {
+        const breedTwoVal = document.getElementById('searchSecondBreed').value;
+
+        if (breedTwoVal != '') {
+          btnParentDiv.getElementsByTagName('button')[0].removeAttribute('disabled');
+        } else {
+          const btnParentDiv = document.getElementById('breedBtnDiv');
+          btnParentDiv.getElementsByTagName('button')[0].disabled = true;
+        }
+      }
+    } else {
+      const btnParentDiv = document.getElementById('breedBtnDiv');
+      btnParentDiv.getElementsByTagName('button')[0].disabled = true;
+    }
+  }
+
+  document.getElementById('searchFirstBreed').addEventListener('keyup', () => {
+    const breedOneVal = document.getElementById('searchFirstBreed').value;
+    if (breedOneVal.length < 1) {
+      const btnParentDiv = document.getElementById('breedBtnDiv');
+      btnParentDiv.getElementsByTagName('button')[0].disabled = true;
+    }
+  });
+  document.getElementById('searchSecondBreed').addEventListener('keyup', () => {
+    const breedSecondVal = document.getElementById('searchSecondBreed').value;
+    if (breedSecondVal.length < 1) {
+      const btnParentDiv = document.getElementById('breedBtnDiv');
+      btnParentDiv.getElementsByTagName('button')[0].disabled = true;
+    }
+  });
+
+  // adding listener to "add another breed"
+  document.getElementById('quizAddAnotherBreed').addEventListener('click', () => enableBtnForBreed());
+
+  // adding listener to "remove another breed"
+  document.getElementById('quizRemoveAnotherBreed').addEventListener('click', () => enableBtnForBreed());
+
+  function enableBtn(target, btnParentDivClass) {
+    if (target.toLowerCase().trim() == 'weigh') {
+      let numberOnly = $('#weigh').val();
+      var regex = /\d+/;
+
+      numberOnly = numberOnly.match(regex);
+      if (Number(numberOnly) > 200) {
+        numberOnly = '200';
+      }
+
+      $('#weigh').val(numberOnly);
+    }
+    if (document.getElementById(target).value.length) {
+      const btnParentDiv = document.getElementById(btnParentDivClass);
+      btnParentDiv.getElementsByTagName('button')[0].removeAttribute('disabled');
+    } else {
+      const btnParentDiv = document.getElementById(btnParentDivClass);
+      btnParentDiv.getElementsByTagName('button')[0].disabled = true;
+    }
+  }
+
+  const listenerArrTextType = [
+    {
+      key: 'fname',
+      targetBtnId: 'nameBtnDiv',
+      action: 'keyup',
+    },
+    {
+      key: 'email',
+      targetBtnId: 'emailBtnDiv',
+      action: 'keyup',
+    },
+    {
+      key: 'weigh',
+      targetBtnId: 'weighBtnDiv',
+      action: 'keyup',
+    },
+  ];
+
+  listenerArrTextType.forEach(({ key, action, targetBtnId }) => {
+    document.getElementById(key).addEventListener(action, () => enableBtn(key, targetBtnId));
+  });
+
+  function enableBtnForNontextType(target, btnParentDivClass) {
+    if (document.querySelector(`input[name="${target}"]:checked`)) {
+      const btnParentDiv = document.getElementById(btnParentDivClass);
+      btnParentDiv.getElementsByTagName('button')[0].removeAttribute('disabled');
+
+      if (target == 'health_issues') {
+        let allSelectedHealth = document.querySelectorAll('input[name="health_issues"]:checked');
+        let allSelectedHealthArr = [];
+        allSelectedHealth.forEach((itm) => {
+          allSelectedHealthArr.push(itm.value);
+        });
+        if (allSelectedHealthArr.includes('other') && document.getElementById('custom_heath_issue').value == '') {
+          btnParentDiv.getElementsByTagName('button')[0].disabled = true;
+        }
+      }
+
+      if (target == 'allergies') {
+        let allSelectedAllergies = document.querySelectorAll('input[name="allergies"]:checked');
+        let allSelectedAllergiesArr = [];
+        allSelectedAllergies.forEach((itm) => {
+          allSelectedAllergiesArr.push(itm.value);
+        });
+        if (allSelectedAllergiesArr.includes('othr') && document.getElementById('custom_allergy_issue').value == '') {
+          btnParentDiv.getElementsByTagName('button')[0].disabled = true;
+        }
+      }
+    } else {
+      const btnParentDiv = document.getElementById(btnParentDivClass);
+      btnParentDiv.getElementsByTagName('button')[0].disabled = true;
+    }
+  }
+
+  const listenerArrNonTextType = [
+    {
+      key: 'spayed',
+      targetBtnId: 'spayedBtnDiv',
+      action: 'change',
+    },
+    {
+      key: 'dogActivity',
+      targetBtnId: 'dogActivityBtnDiv',
+      action: 'change',
+    },
+    {
+      key: 'dogBodyType',
+      targetBtnId: 'dogBodyTypeBtnDiv',
+      action: 'change',
+    },
+    {
+      key: 'health_issues',
+      targetBtnId: 'health_issuesBtnDiv',
+      action: 'change',
+    },
+    {
+      key: 'allergies',
+      targetBtnId: 'allergiesBtnDiv',
+      action: 'change',
+    },
+  ];
+
+  listenerArrNonTextType.forEach(({ key, action, targetBtnId }) => {
+    const arr = document.getElementsByName(key);
+    arr.forEach((item) => {
+      item.addEventListener(action, () => enableBtnForNontextType(key, targetBtnId));
+    });
+  });
+
+  const listenerForCUstomSElect = [
+    {
+      key: 'dateofbirth',
+      targetBtnId: 'dobBtnDiv',
+      action: 'DOMSubtreeModified',
+    },
+  ];
+
+  function enableBtnForCustomSelect(iii, btnParentDivClass) {
+    if (document.getElementsByClassName('select-selected')[iii].innerHTML != 'Select age') {
+      const btnParentDiv = document.getElementById(btnParentDivClass);
+      btnParentDiv.getElementsByTagName('button')[0].removeAttribute('disabled');
+    } else {
+      const btnParentDiv = document.getElementById(btnParentDivClass);
+      btnParentDiv.getElementsByTagName('button')[0].disabled = true;
+    }
+  }
+
+  // applying timer here because loop run faster then the dom load
+  setTimeout(() => {
+    listenerForCUstomSElect.forEach(({ action, targetBtnId }, idx) => {
+      document
+        .getElementsByClassName('select-selected')
+        [idx].addEventListener(action, () => enableBtnForCustomSelect(idx, targetBtnId));
+    });
+  }, '4000');
+
+  function hideAllScreens() {
+    document.getElementById('page1').style.display = 'none';
+    document.getElementById('page2').style.display = 'none';
+    document.getElementById('page3').style.display = 'none';
+    document.getElementById('page4').style.display = 'none';
+    document.getElementById('page5').style.display = 'none';
+    document.getElementById('page6').style.display = 'none';
+    document.getElementById('page7').style.display = 'none';
+    document.getElementById('page8').style.display = 'none';
+    document.getElementById('page9').style.display = 'none';
+    document.getElementById('page10').style.display = 'none';
+    document.getElementById('page11').style.display = 'none';
+    document.getElementById('page12').style.display = 'none';
+    document.getElementById('page12one').style.display = 'none';
+    document.getElementById('page12two').style.display = 'none';
+  }
+
+  function storeDOBInLS() {
+    let value = localStorage.getItem('next_quiz_dateofbirth');
+    const valInDOm = document.getElementsByClassName('select-selected')[0].innerText;
+
+    if (value && value == valInDOm) {
+      localStorage.setItem('next_quiz_dateofbirth', value);
+    } else {
+      if (valInDOm != 'Select age') {
+        if (valInDOm) {
+          localStorage.setItem('next_quiz_dateofbirth', valInDOm);
+        } else {
+          localStorage.setItem('next_quiz_dateofbirth', value || 'Select date');
+        }
+      }
+    }
+  }
+
+  function clearAllSelectionAndField(addAnotherDog = false) {
+    document.getElementById('fname').value = '';
+    if (addAnotherDog) {
+      document.getElementById('email').value = '';
+    }
+
+    setTimeout(function () {
+      if (document.getElementsByClassName('select-selected')) {
+        document.getElementsByClassName('select-selected')[0].innerText = 'Select age';
+      }
+    }, '1500');
+
+    if (document.querySelector('input[name="gender"]:checked')) {
+      document
+        .querySelector('input[name="gender"]:checked')
+        .parentElement.parentElement.classList.remove('activeRadioBtn');
+      document.querySelector('input[name="gender"]:checked').checked = false;
+    }
+
+    if (document.querySelector('input[name="spayed"]:checked')) {
+      document
+        .querySelector('input[name="spayed"]:checked')
+        .parentElement.parentElement.classList.remove('activeRadioBtn');
+      document.querySelector('input[name="spayed"]:checked').checked = false;
+    }
+
+    if (document.getElementById('weigh')) {
+      document.getElementById('weigh').value = '';
+    }
+
+    if (document.getElementById('searchFirstBreed')) {
+      document.getElementById('searchFirstBreed').value = '';
+    }
+
+    if (document.getElementById('searchSecondBreed')) {
+      document.getElementById('searchSecondBreed').value = '';
+    }
+
+    if (document.querySelector('input[name="dogActivity"]:checked')) {
+      document.querySelector('input[name="dogActivity"]:checked').parentElement.classList.remove('imActive');
+      document.querySelector('input[name="dogActivity"]:checked').checked = false;
+    }
+
+    if (document.querySelector('input[name="dogBodyType"]:checked')) {
+      document.querySelector('input[name="dogBodyType"]:checked').parentElement.classList.remove('activeBody');
+      document.querySelector('input[name="dogBodyType"]:checked').checked = false;
+    }
+
+    if (document.querySelector('input[name="health_issues"]:checked')) {
+      document
+        .querySelector('input[name="health_issues"]:checked')
+        .parentElement.parentElement.classList.remove('activeRadioBtn');
+      document.querySelector('input[name="health_issues"]:checked').checked = false;
+    }
+
+    if (document.querySelector('input[name="allergies"]:checked')) {
+      document
+        .querySelector('input[name="allergies"]:checked')
+        .parentElement.parentElement.classList.remove('activeRadioBtn');
+      document.querySelector('input[name="allergies"]:checked').checked = false;
+    }
+  }
+
+  function other_health_issue_clicked(justHide) {
+    // used when clicking "NO issues" means just hide this field
+    if (justHide) {
+      document.getElementById('custom_heath_issue').style.display = 'none';
+      document.getElementById('custom_heath_issue').value = '';
+      localStorage.setItem('custom_heath_issue', '');
+      return;
+    }
+
+    // used when page loads if false passed means just show the field becasue other is selected
+    if (justHide == false) {
+      document.getElementById('custom_heath_issue').style.display = 'block';
+      document.getElementById('custom_heath_issue').value = localStorage.getItem('custom_heath_issue');
+      return;
+    }
+
+    if (document.getElementById('custom_heath_issue').style.display == 'none') {
+      document.getElementById('custom_heath_issue').style.display = 'block';
+    } else {
+      document.getElementById('custom_heath_issue').style.display = 'none';
+      document.getElementById('custom_heath_issue').value = '';
+      localStorage.setItem('custom_heath_issue', '');
+    }
+  }
+
+  function other_allergy_clicked(justHide) {
+    // used when clicking "NO issues" means just hide this field
+    if (justHide) {
+      document.getElementById('custom_allergy_issue').style.display = 'none';
+      document.getElementById('custom_allergy_issue').value = '';
+      return;
+    }
+
+    // used when page loads if false passed means just show the field becasue other is selected
+    if (justHide == false) {
+      document.getElementById('custom_allergy_issue').style.display = 'block';
+      document.getElementById('custom_allergy_issue').value = localStorage.getItem('custom_allergy_issue');
+
+      return;
+    }
+
+    if (document.getElementById('custom_allergy_issue').style.display == 'none') {
+      document.getElementById('custom_allergy_issue').style.display = 'block';
+    } else {
+      document.getElementById('custom_allergy_issue').style.display = 'none';
+      document.getElementById('custom_allergy_issue').value = '';
+    }
+  }
+
+  function closeResPanel() {
+    document.getElementsByClassName('resPanel')[0].removeAttribute('style');
+  }
+
+  function updateProgressBar(forFarword) {
+    if (forFarword) {
+      var elements = document.getElementsByClassName(`activeProgress${pageNumber - 1}`);
+      for (var i = 0; i < elements.length; i++) {
+        elements[i].classList.add('activeProgress');
+      }
+    } else {
+      var elements = document.getElementsByClassName(`activeProgress${pageNumber}`);
+      for (var i = 0; i < elements.length; i++) {
+        elements[i].classList.remove('activeProgress');
+      }
+    }
+  }
+
+  function removeActiveCLassForProgresBar() {
+    const elements = document.getElementsByClassName(`activeProgress`);
+    if (elements.length > 0) {
+      document.getElementsByClassName(`activeProgress`)[0].classList.remove('activeProgress');
+      removeActiveCLassForProgresBar();
+    }
+  }
+
+  var shopifyProducts = [];
+  async function getShopifyProd() {
+    var data = JSON.stringify({
+      query: `{
+        collection(id: "${COLLECTION_ID}"){
+        	id
+          title
+          products(first: 10) {
+            edges {
+              node {
+                id
+                title
+                description
+                onlineStoreUrl
+                metafields(identifiers : [
+                  {namespace:"quiz", key:"sub_multi_product_variant"}
+                  {namespace:"quiz", key:"sub_multi_product"}
+                  {namespace:"quiz", key:"modal_product_name"}
+                  {namespace:"quiz", key:"modal_product_image"}
+                  {namespace:"quiz", key:"modal_product_description"}
+                  {namespace:"quiz", key:"modal_product_ingredients"}
+                  {namespace:"quiz", key:"modal_product_analysis"}
+                ]){
+                  key
+                  value            
+                }
+                variants(first:5){
+                  edges{
+                    node{
+                      id
+                      title
+                      price{
+                        amount
+                      }
+                    }
+                  }
+                }
+                featuredImage {
+                  url
+                }
+              }
+            }
+          }
+        }
+      }`,
+    });
+
+    var config = {
+      method: 'post',
+      url: SF_GQL_URL,
+      headers: {
+        'X-Shopify-Storefront-Access-Token': SF_TOKEN,
+        'Content-Type': 'application/json',
+      },
+      data: data,
+    };
+
+    try {
+      const resp = await axios(config);
+      shopifyProducts = resp.data?.data?.collection?.products?.edges || [];
+      // productDetailModal(shopifyProducts);
+      console.log('=> shopifyProducts : ', shopifyProducts);
+      return shopifyProducts;
+    } catch (e) {
+      console.error('=> ERROR getShopifyProd : ', e.message);
+    }
+  }
+
+  function productDetailModal(productsProd) {
+    const productHtml = `<div id="product_name_lower_modal-modal" class="prod-modal quiz-prod-modal">      
+        <div class="prod-modal-content">
+          <span class="closeModal" onClick="closeProdDetailModal()">&times;</span>
+          <div class="prodDetailContent">
+            <div class="modal-img-title">
+              <div class="prod-modal-img-div">
+                <img class="" src="product_img_modal"/>
+              </div>
+              <div>
+                <h3 class="">product_name_modal</h3>
+                <p class="">product_name_description</p>
+              </div>
+            </div>            
+            <div class="has-padding-top">
+              <div class="productTabs">
+                <button class="customAccordion modalcustomAccordion GothamMedium body-2">ingredients</button>
+                <div class="customPanel">
+                product_ingredients_modal
+              </div>
+              <button class="customAccordion modalcustomAccordion GothamMedium body-2">Guaranteed Analysis</button>
+              <div class="customPanel">
+                product_analysis_modal
+              </div>
+             </div>
+            </div>            
+          </div>
+        </div>
+      </div>`;
+
+    const prodModalArr = [];
+    productsProd.forEach(({ node }) => {
+      const { metafields, featuredImage } = node;
+      const { url: imgUrl } = featuredImage;
+
+      const prodName = metafields.find((item) => item.key == 'modal_product_name')?.value || '';
+      const prodDesc = metafields.find((item) => item.key == 'modal_product_description')?.value || '';
+      const prodIngred = metafields.find((item) => item.key == 'modal_product_ingredients')?.value || '';
+      const prodAnalysis = metafields.find((item) => item.key == 'modal_product_analysis')?.value || '';
+
+      let productHtmlLocal = productHtml;
+      productHtmlLocal = productHtmlLocal.replace(/product_name_lower_modal/g, String(prodName).toLowerCase());
+      productHtmlLocal = productHtmlLocal.replace(/product_img_modal/g, imgUrl);
+      productHtmlLocal = productHtmlLocal.replace(/product_name_modal/g, prodName);
+      productHtmlLocal = productHtmlLocal.replace(/product_name_description/g, prodDesc);
+      productHtmlLocal = productHtmlLocal.replace(/product_ingredients_modal/g, prodIngred);
+      productHtmlLocal = productHtmlLocal.replace(/product_analysis_modal/g, prodAnalysis);
+
+      prodModalArr.push(productHtmlLocal);
+    });
+    prodModalArr.push(`<div id="prodModalBackDrop" onClick="closeProdDetailModal()"></div>`);
+    document.getElementById('quiz-prod-modal-wrapper').innerHTML = prodModalArr.join('');
+
+    var acc = document.getElementsByClassName('modalcustomAccordion');
+
+    acc.forEach((item) => {
+      item.addEventListener('click', function () {
+        this.classList.toggle('active');
+
+        var customPanel = this.nextElementSibling;
+        if (customPanel.style.maxHeight) {
+          customPanel.style.maxHeight = null;
+          customPanel.style.marginBottom = '0px';
+        } else {
+          customPanel.style.maxHeight = '380px';
+          customPanel.style.marginBottom = '12px';
+
+          // STATIC VALUES FOR MAX-HEIGHT
+        }
+      });
+    });
+  }
+
+  let rechargePlans = [];
+  let plan_for_28_days = [];
+  let plan_for_14_days = [];
+  async function getRechargePlans() {
+    var config = {
+      method: 'get',
+      url: `${BASE_URL}/recharge/plans`,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    };
+
+    try {
+      // if(window.location.origin == 'https://www.nextritionpet.com'){
+      let {
+        data: { plans: all_plans },
+      } = await axios(config);
+
+      // }else{
+      // const data = { "next_cursor": null, "previous_cursor": null, "plans": [ { "id": 9307404, "channel_settings": { "api": { "display": true }, "checkout_page": { "display": true }, "customer_portal": { "display": true }, "merchant_portal": { "display": true } }, "created_at": "2023-03-15T05:51:42+00:00", "deleted_at": null, "discount_amount": null, "discount_type": null, "external_plan_group_id": null, "external_plan_id": null, "external_plan_name": null, "external_product_id": { "ecommerce": "7977273721054" }, "sort_order": 2, "subscription_preferences": { "apply_cutoff_date_to_checkout": false, "charge_interval_frequency": null, "cutoff_day_of_month": null, "cutoff_day_of_week": null, "expire_after_specific_number_of_charges": null, "interval_unit": null, "order_day_of_month": null, "order_day_of_week": null, "order_interval_frequency": null }, "title": "Salmon Recipe", "type": "onetime", "updated_at": "2023-03-15T05:51:42+00:00" }, { "id": 9307403, "channel_settings": { "api": { "display": true }, "checkout_page": { "display": true }, "customer_portal": { "display": true }, "merchant_portal": { "display": true } }, "created_at": "2023-03-15T05:51:30+00:00", "deleted_at": null, "discount_amount": null, "discount_type": null, "external_plan_group_id": null, "external_plan_id": null, "external_plan_name": null, "external_product_id": { "ecommerce": "7977273655518" }, "sort_order": 2, "subscription_preferences": { "apply_cutoff_date_to_checkout": false, "charge_interval_frequency": null, "cutoff_day_of_month": null, "cutoff_day_of_week": null, "expire_after_specific_number_of_charges": null, "interval_unit": null, "order_day_of_month": null, "order_day_of_week": null, "order_interval_frequency": null }, "title": "Lamb Recipe", "type": "onetime", "updated_at": "2023-03-15T05:51:30+00:00" }, { "id": 9307400, "channel_settings": { "api": { "display": true }, "checkout_page": { "display": true }, "customer_portal": { "display": true }, "merchant_portal": { "display": true } }, "created_at": "2023-03-15T05:49:05+00:00", "deleted_at": null, "discount_amount": null, "discount_type": null, "external_plan_group_id": null, "external_plan_id": null, "external_plan_name": null, "external_product_id": { "ecommerce": "7977263726814" }, "sort_order": 2, "subscription_preferences": { "apply_cutoff_date_to_checkout": false, "charge_interval_frequency": null, "cutoff_day_of_month": null, "cutoff_day_of_week": null, "expire_after_specific_number_of_charges": null, "interval_unit": null, "order_day_of_month": null, "order_day_of_week": null, "order_interval_frequency": null }, "title": "Chicken Recipe", "type": "onetime", "updated_at": "2023-03-15T05:49:05+00:00" }, { "id": 9294623, "channel_settings": { "api": { "display": true }, "checkout_page": { "display": true }, "customer_portal": { "display": true }, "merchant_portal": { "display": true } }, "created_at": "2023-03-13T21:06:32+00:00", "deleted_at": null, "discount_amount": "0.00", "discount_type": "percentage", "external_plan_group_id": "1076396254", "external_plan_id": "4612718814", "external_plan_name": "Delivery every 28 Days", "external_product_id": { "ecommerce": "7977273721054" }, "sort_order": 1, "subscription_preferences": { "apply_cutoff_date_to_checkout": false, "charge_interval_frequency": 28, "cutoff_day_of_month": null, "cutoff_day_of_week": null, "expire_after_specific_number_of_charges": null, "interval_unit": "day", "order_day_of_month": null, "order_day_of_week": null, "order_interval_frequency": 28 }, "title": "Salmon Recipe", "type": "subscription", "updated_at": "2023-03-13T21:10:04+00:00" }, { "id": 9294618, "channel_settings": { "api": { "display": true }, "checkout_page": { "display": true }, "customer_portal": { "display": true }, "merchant_portal": { "display": true } }, "created_at": "2023-03-13T21:06:32+00:00", "deleted_at": null, "discount_amount": "0.00", "discount_type": "percentage", "external_plan_group_id": "1076363486", "external_plan_id": "4612686046", "external_plan_name": "Delivery every 28 Days", "external_product_id": { "ecommerce": "7977273655518" }, "sort_order": 1, "subscription_preferences": { "apply_cutoff_date_to_checkout": false, "charge_interval_frequency": 28, "cutoff_day_of_month": null, "cutoff_day_of_week": null, "expire_after_specific_number_of_charges": null, "interval_unit": "day", "order_day_of_month": null, "order_day_of_week": null, "order_interval_frequency": 28 }, "title": "Lamb Recipe", "type": "subscription", "updated_at": "2023-03-13T21:09:14+00:00" }, { "id": 9294516, "channel_settings": { "api": { "display": true }, "checkout_page": { "display": true }, "customer_portal": { "display": true }, "merchant_portal": { "display": true } }, "created_at": "2023-03-13T21:00:21+00:00", "deleted_at": null, "discount_amount": "0.00", "discount_type": "percentage", "external_plan_group_id": "1076330718", "external_plan_id": "4612653278", "external_plan_name": "Delivery every 28 Days", "external_product_id": { "ecommerce": "7977263726814" }, "sort_order": 1, "subscription_preferences": { "apply_cutoff_date_to_checkout": false, "charge_interval_frequency": 28, "cutoff_day_of_month": null, "cutoff_day_of_week": null, "expire_after_specific_number_of_charges": null, "interval_unit": "day", "order_day_of_month": null, "order_day_of_week": null, "order_interval_frequency": 28 }, "title": "Chicken Recipe", "type": "subscription", "updated_at": "2023-03-13T21:00:45+00:00" }, { "id": 7394034, "channel_settings": { "api": { "display": true }, "checkout_page": { "display": true }, "customer_portal": { "display": true }, "merchant_portal": { "display": true } }, "created_at": "2022-11-29T09:47:06+00:00", "deleted_at": null, "discount_amount": "0.00", "discount_type": "percentage", "external_plan_group_id": "1058865374", "external_plan_id": "4583194846", "external_plan_name": "Delivery every 28 Days", "external_product_id": { "ecommerce": "7572886716638" }, "sort_order": 1, "subscription_preferences": { "apply_cutoff_date_to_checkout": false, "charge_interval_frequency": 28, "cutoff_day_of_month": null, "cutoff_day_of_week": null, "expire_after_specific_number_of_charges": null, "interval_unit": "day", "order_day_of_month": null, "order_day_of_week": null, "order_interval_frequency": 28 }, "title": "Salmon Recipe", "type": "subscription", "updated_at": "2023-03-13T21:02:17+00:00" }, { "id": 7394033, "channel_settings": { "api": { "display": true }, "checkout_page": { "display": true }, "customer_portal": { "display": true }, "merchant_portal": { "display": true } }, "created_at": "2022-11-29T09:47:06+00:00", "deleted_at": null, "discount_amount": null, "discount_type": null, "external_plan_group_id": null, "external_plan_id": null, "external_plan_name": null, "external_product_id": { "ecommerce": "7572886716638" }, "sort_order": 2, "subscription_preferences": { "apply_cutoff_date_to_checkout": false, "charge_interval_frequency": null, "cutoff_day_of_month": null, "cutoff_day_of_week": null, "expire_after_specific_number_of_charges": null, "interval_unit": null, "order_day_of_month": null, "order_day_of_week": null, "order_interval_frequency": null }, "title": "Salmon Recipe", "type": "onetime", "updated_at": "2022-11-29T09:47:06+00:00" }, { "id": 7394031, "channel_settings": { "api": { "display": true }, "checkout_page": { "display": true }, "customer_portal": { "display": true }, "merchant_portal": { "display": true } }, "created_at": "2022-11-29T09:46:53+00:00", "deleted_at": null, "discount_amount": "0.00", "discount_type": "percentage", "external_plan_group_id": "1058799838", "external_plan_id": "4583162078", "external_plan_name": "Delivery every 28 Days", "external_product_id": { "ecommerce": "7572885209310" }, "sort_order": 1, "subscription_preferences": { "apply_cutoff_date_to_checkout": false, "charge_interval_frequency": 28, "cutoff_day_of_month": null, "cutoff_day_of_week": null, "expire_after_specific_number_of_charges": null, "interval_unit": "day", "order_day_of_month": null, "order_day_of_week": null, "order_interval_frequency": 28 }, "title": "Lamb Recipe", "type": "subscription", "updated_at": "2023-03-13T21:00:58+00:00" }, { "id": 7394030, "channel_settings": { "api": { "display": true }, "checkout_page": { "display": true }, "customer_portal": { "display": true }, "merchant_portal": { "display": true } }, "created_at": "2022-11-29T09:46:53+00:00", "deleted_at": null, "discount_amount": null, "discount_type": null, "external_plan_group_id": null, "external_plan_id": null, "external_plan_name": null, "external_product_id": { "ecommerce": "7572885209310" }, "sort_order": 2, "subscription_preferences": { "apply_cutoff_date_to_checkout": false, "charge_interval_frequency": null, "cutoff_day_of_month": null, "cutoff_day_of_week": null, "expire_after_specific_number_of_charges": null, "interval_unit": null, "order_day_of_month": null, "order_day_of_week": null, "order_interval_frequency": null }, "title": "Lamb Recipe", "type": "onetime", "updated_at": "2022-11-29T09:46:53+00:00" }, { "id": 7394029, "channel_settings": { "api": { "display": true }, "checkout_page": { "display": true }, "customer_portal": { "display": true }, "merchant_portal": { "display": true } }, "created_at": "2022-11-29T09:46:39+00:00", "deleted_at": null, "discount_amount": "0.00", "discount_type": "percentage", "external_plan_group_id": "1058832606", "external_plan_id": "4583129310", "external_plan_name": "Delivery every 28 Days", "external_product_id": { "ecommerce": "7572883505374" }, "sort_order": 1, "subscription_preferences": { "apply_cutoff_date_to_checkout": false, "charge_interval_frequency": 28, "cutoff_day_of_month": null, "cutoff_day_of_week": null, "expire_after_specific_number_of_charges": null, "interval_unit": "day", "order_day_of_month": null, "order_day_of_week": null, "order_interval_frequency": 28 }, "title": "Chicken Recipe", "type": "subscription", "updated_at": "2023-03-13T20:54:21+00:00" }, { "id": 7394028, "channel_settings": { "api": { "display": true }, "checkout_page": { "display": true }, "customer_portal": { "display": true }, "merchant_portal": { "display": true } }, "created_at": "2022-11-29T09:46:39+00:00", "deleted_at": null, "discount_amount": null, "discount_type": null, "external_plan_group_id": null, "external_plan_id": null, "external_plan_name": null, "external_product_id": { "ecommerce": "7572883505374" }, "sort_order": 2, "subscription_preferences": { "apply_cutoff_date_to_checkout": false, "charge_interval_frequency": null, "cutoff_day_of_month": null, "cutoff_day_of_week": null, "expire_after_specific_number_of_charges": null, "interval_unit": null, "order_day_of_month": null, "order_day_of_week": null, "order_interval_frequency": null }, "title": "Chicken Recipe", "type": "onetime", "updated_at": "2022-11-29T09:46:39+00:00" } ] }
+      // resp = {data}
+      // }
+
+      // setting the discount code dynamically but its showing discount of salmon for nor in future might need to show dynamic on each products
+      // Number(resp.data.plans[0].discount_amount).toFixed(0);
+      // document.getElementById("recharge_discount_amount").innerHTML = "30"; // Number(resp.data.plans[0].discount_amount).toFixed(0);
+      // document.getElementById("recharge_discount_amount").innerHTML = "30"; // Number(resp.data.plans[0].discount_amount).toFixed(0);
+
+      rechargePlans = all_plans?.plans || [];
+      if (rechargePlans.length == 0) {
+        return;
+      }
+      rechargePlans = rechargePlans?.filter((plan) => plan.discount_amount != null) || [];
+
+      plan_for_28_days =
+        rechargePlans?.filter(
+          ({ subscription_preferences }) => subscription_preferences.order_interval_frequency == 28
+        ) || [];
+      plan_for_14_days =
+        rechargePlans?.filter(
+          ({ subscription_preferences }) => subscription_preferences.order_interval_frequency == 14
+        ) || [];
+
+      console.log('=> plans ::: ', rechargePlans, plan_for_28_days, plan_for_14_days);
+
+      return { rechargePlans, plan_for_28_days, plan_for_14_days };
+    } catch (e) {
+      console.error('=> ERROR getSubScriptions : ', e.message);˜
+    }
+  }
+</script>
